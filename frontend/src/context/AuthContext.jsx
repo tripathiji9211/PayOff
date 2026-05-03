@@ -162,6 +162,16 @@ export const AuthProvider = ({ children }) => {
         applyTheme(newMode ? 'purple' : (updatedUser.theme || 'cyan'));
     };
 
+    const completeKyc = async () => {
+        const updatedUser = { ...user, kycVerified: true };
+        sessionStorage.setItem('currentUser', JSON.stringify(updatedUser));
+        if (user && user.phone && !DEMO_ACCOUNTS.some(a => a.phone === user.phone)) {
+            await putData(STORES.USERS, updatedUser);
+        }
+        setUser(updatedUser);
+        return { success: true };
+    };
+
     const switchAccount = (accountPhone) => {
         const account = DEMO_ACCOUNTS.find(a => a.phone === accountPhone);
         if (account) {
@@ -173,7 +183,7 @@ export const AuthProvider = ({ children }) => {
     };
 
     return (
-        <AuthContext.Provider value={{ user, isMerchant, login, register, logout, toggleMerchantMode, switchAccount, loading }}>
+        <AuthContext.Provider value={{ user, isMerchant, login, register, logout, toggleMerchantMode, switchAccount, completeKyc, loading }}>
             {children}
         </AuthContext.Provider>
     );

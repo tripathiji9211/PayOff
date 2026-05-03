@@ -5,9 +5,9 @@ import { useOnlineStatus } from '../hooks/useOnlineStatus';
 import { 
     Wallet, Send, QrCode, History, RefreshCcw, Bell, User, 
     ArrowUpRight, ArrowDownLeft, CheckCircle2, Clock, AlertCircle, 
-    LogOut, WifiOff, Wifi, Award, Trash2, Users, Monitor,
+    LogOut, WifiOff, Wifi, Award, Trash2, Users, 
     X, PlayCircle, Fingerprint, Lock, Zap, Shield, Store, Sparkles,
-    Globe
+    Globe, UserCheck
 } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -17,6 +17,7 @@ import MerchantDashboard from './MerchantDashboard';
 import toast from 'react-hot-toast';
 import { DashboardSkeleton } from '../components/Skeletons';
 import { EmptyTransactions, EmptyNotifications } from '../components/EmptyStates';
+import KycModal from '../components/KycModal';
 
 const CustomerDashboard = ({ 
     user, logout, switchAccount, 
@@ -33,12 +34,13 @@ const CustomerDashboard = ({
     isMerchant, toggleMerchantMode,
     handleEnableBio, dismissBio, trustColor, radius, circumference, 
     strokeDashoffset, unreadCount, getTimeAgo, getStatusIcon, getNotifIcon, 
-    groupedNotifications, handleNotifClick 
+    groupedNotifications, handleNotifClick, completeKyc, showKycModal, setShowKycModal 
 }) => {
     const [lang, setLang] = useState('EN');
     const [showLangSelector, setShowLangSelector] = useState(false);
     const [isBalanceHidden, setIsBalanceHidden] = useState(false);
     const [mousePos, setMousePos] = useState({ x: 0, y: 0 });
+    
 
     const handleMouseMove = (e) => {
         const rect = e.currentTarget.getBoundingClientRect();
@@ -66,7 +68,15 @@ const CustomerDashboard = ({
                         {user?.name?.charAt(0).toUpperCase() || 'U'}
                     </div>
                     <div className="cursor-pointer" onClick={() => setShowAccountSwitch(true)}>
-                        <p className="text-sm font-black text-white">{user?.name || 'Authorized User'}</p>
+                        <div className="flex items-center gap-2">
+                            <p className="text-sm font-black text-white">{user?.name || 'Authorized User'}</p>
+                            {user?.kycVerified && <CheckCircle2 size={12} className="text-accent-cyan ml-1 drop-shadow-[0_0_5px_rgba(0,245,255,0.5)]" />}
+                                
+                                    
+                                    
+
+
+                        </div>
                         <div className="flex items-center gap-1.5 px-2 py-0.5 rounded-full border border-white/5 bg-white/5 w-fit mt-1">
                             {biometricEnabled ? <Fingerprint size={8} className="text-accent-cyan" /> : <Lock size={8} className="text-secondary" />}
                             <span className="text-[7px] font-black uppercase tracking-widest text-secondary">
@@ -81,9 +91,6 @@ const CustomerDashboard = ({
                             <button onClick={startDemo} className="flex items-center gap-1 px-2 py-1 bg-accent-cyan/10 border border-accent-cyan/20 rounded-md text-[8px] font-black uppercase tracking-widest text-accent-cyan hover:bg-white hover:text-[#0a0f1e] hover:shadow-[0_0_15px_rgba(255,255,255,0.3)] transition-all duration-300">
                                 <PlayCircle size={10} /> DEMO
                             </button>
-                            <Link to="/split-demo" className="hidden lg:flex items-center gap-1 px-2 py-1 bg-white/5 border border-white/10 rounded-md text-[8px] font-black uppercase tracking-widest text-secondary hover:text-white transition-colors">
-                                <Monitor size={10} /> SPLIT
-                            </Link>
                         </div>
                     )}
                     {/* Language Selector */}
@@ -271,20 +278,34 @@ const CustomerDashboard = ({
             <motion.div 
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
-                className="glass-card p-4 mb-8 border-accent-cyan/10 flex items-center justify-between group cursor-pointer hover:bg-white/5 transition-all duration-300"
+                className={`glass-card p-4 mb-8 border-accent-cyan/10 flex items-center justify-between group transition-all duration-300 ${user?.kycVerified ? 'border-green-500/20 bg-green-500/5' : 'cursor-pointer hover:bg-white/5'}`}
             >
                 <div className="flex items-center gap-4">
-                    <div className="w-11 h-11 rounded-xl bg-accent-cyan/10 flex items-center justify-center text-accent-cyan shadow-[0_0_15px_rgba(0,245,255,0.1)] group-hover:scale-110 transition-transform">
-                        <Shield size={20} />
+                    <div className={`w-11 h-11 rounded-xl flex items-center justify-center shadow-[0_0_15px_rgba(0,245,255,0.1)] transition-all ${user?.kycVerified ? 'bg-green-500/10 text-green-400' : 'bg-accent-cyan/10 text-accent-cyan group-hover:scale-110'}`}>
+                        {user?.kycVerified ? <UserCheck size={20} /> : <Shield size={20} />}
                     </div>
                     <div>
-                        <h3 className="text-sm font-black uppercase italic tracking-tighter text-white">KYC Required</h3>
-                        <p className="text-[9px] text-secondary font-black uppercase tracking-widest mt-0.5">Verify identity for ₹10k limit</p>
+                        <h3 className="text-sm font-black uppercase italic tracking-tighter text-white">
+                            {user?.kycVerified ? 'Identity Verified' : 'KYC Required'}
+                        </h3>
+                        <p className="text-[9px] text-secondary font-black uppercase tracking-widest mt-0.5">
+                            {user?.kycVerified ? 'Your ₹10k offline limit is now active' : 'Verify identity for ₹10k limit'}
+                        </p>
                     </div>
                 </div>
-                <button className="px-5 py-2 rounded-lg bg-white/5 border border-white/10 text-[9px] font-black uppercase tracking-widest hover:bg-white hover:text-[#0a0f1e] transition-all shadow-lg">
-                    Start
-                </button>
+                {!user?.kycVerified ? (
+                    <button 
+                        onClick={() => setShowKycModal(true)}
+                        className="px-5 py-2 rounded-lg bg-white/5 border border-white/10 text-[9px] font-black uppercase tracking-widest hover:bg-white hover:text-[#0a0f1e] transition-all shadow-lg"
+                    >
+                        Start
+                    </button>
+                ) : (
+                    <div className="flex items-center gap-2 text-green-400">
+                        <div className="w-1.5 h-1.5 rounded-full bg-green-400 animate-pulse"></div>
+                        <span className="text-[8px] font-black uppercase tracking-[0.2em]">Protocol Active</span>
+                    </div>
+                )}
             </motion.div>
 
             {/* AI Smart Insights */}
@@ -644,9 +665,19 @@ const CustomerDashboard = ({
                     </motion.div>
                 )}
             </AnimatePresence>
+
+            <KycModal 
+                isOpen={showKycModal} 
+                onClose={() => setShowKycModal(false)} 
+                onComplete={() => {
+                    completeKyc();
+                    setShowKycModal(false);
+                }} 
+            />
         </div>
     );
 };
+
 
 const ShieldCheck = ({ size, className }) => (
     <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" className={className}>
@@ -655,10 +686,13 @@ const ShieldCheck = ({ size, className }) => (
     </svg>
 );
 
-
 const Dashboard = () => {
-    const { user, isMerchant, toggleMerchantMode, logout, switchAccount } = useAuth();
-    const { balance, transactions, pendingCount, notifications, isSyncing, markNotificationsAsRead, deleteNotification, trustScore, trustFactors, offlineLimit, isLoading } = useWallet();
+    const { user, isMerchant, toggleMerchantMode, logout, switchAccount, completeKyc } = useAuth();
+    const { 
+        balance, transactions, pendingCount, notifications, 
+        isSyncing, markNotificationsAsRead, deleteNotification, 
+        trustScore, trustFactors, offlineLimit, isLoading 
+    } = useWallet();
     const { isDemoActive, startDemo } = useDemo();
     const isOnline = useOnlineStatus();
     const navigate = useNavigate();
@@ -667,6 +701,7 @@ const Dashboard = () => {
     const [showAccountSwitch, setShowAccountSwitch] = useState(false);
     const { biometricSupported, biometricEnabled, registerBiometric } = useSecurity();
     const [showBioPrompt, setShowBioPrompt] = useState(false);
+    const [showKycModal, setShowKycModal] = useState(false);
 
     useEffect(() => {
         if (biometricSupported && !biometricEnabled) {
@@ -775,10 +810,10 @@ const Dashboard = () => {
             radius={radius} circumference={circumference} strokeDashoffset={strokeDashoffset}
             unreadCount={unreadCount} getTimeAgo={getTimeAgo} getStatusIcon={getStatusIcon}
             getNotifIcon={getNotifIcon} groupedNotifications={groupedNotifications}
-            handleNotifClick={handleNotifClick}
+            handleNotifClick={handleNotifClick} completeKyc={completeKyc}
+            showKycModal={showKycModal} setShowKycModal={setShowKycModal}
         />
     );
 };
 
 export default Dashboard;
-
